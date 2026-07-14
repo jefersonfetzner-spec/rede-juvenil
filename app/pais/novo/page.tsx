@@ -18,6 +18,20 @@ interface JuvenilOpcao {
     nome: string
 }
 
+const OPCOES_PARENTESCO = [
+    { valor: 'pai', label: '👨 Pai' },
+    { valor: 'mae', label: '👩 Mãe' },
+    { valor: 'avo', label: '👴 Avô' },
+    { valor: 'avoh', label: '👵 Avó' },
+    { valor: 'tio', label: '🧔 Tio' },
+    { valor: 'tia', label: '👩‍🦰 Tia' },
+    { valor: 'padrasto', label: '👨 Padrasto' },
+    { valor: 'madrasta', label: '👩 Madrasta' },
+    { valor: 'tutor', label: '⚖️ Tutor Legal' },
+    { valor: 'responsavel', label: '🤝 Responsável' },
+    { valor: 'outro', label: '➕ Outro (especificar)' },
+]
+
 export default function NovoPaiPage() {
     const router = useRouter()
     const [perfil, setPerfil] = useState<Perfil | null>(null)
@@ -25,12 +39,15 @@ export default function NovoPaiPage() {
     const [carregando, setCarregando] = useState(true)
     const [salvando, setSalvando] = useState(false)
     const [erro, setErro] = useState('')
+    const [sucesso, setSucesso] = useState<{email: string, senha: string, nome: string} | null>(null)
 
     // Campos
     const [nome, setNome] = useState('')
+    const [email, setEmail] = useState('')
+    const [parentesco, setParentesco] = useState('responsavel')
+    const [parentescoOutro, setParentescoOutro] = useState('')
     const [telefone, setTelefone] = useState('')
     const [whatsapp, setWhatsapp] = useState('')
-    const [email, setEmail] = useState('')
     const [juvenisSelecionados, setJuvenisSelecionados] = useState<string[]>([])
 
     useEffect(() => {
@@ -59,7 +76,6 @@ export default function NovoPaiPage() {
 
             setPerfil(perfilData)
 
-            // Buscar juvenis para vincular
             const { data: juvenisData } = await supabase
                 .from('juvenis')
                 .select('id, nome')
@@ -85,17 +101,45 @@ export default function NovoPaiPage() {
     async function handleSubmit(e: React.FormEvent) {
         e.preventDefault()
         setErro('')
+
+        if (parentesco === 'outro' && !parentescoOutro.trim()) {
+            setErro('Especifique o parentesco no campo "Outro"')
+            return
+        }
+
         setSalvando(true)
 
         try {
-            // 1. Cadastrar o pai
+            const senhaInicial = 'rede123'
+
+            const response = await fetch('/api/criar-usuario', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    email: email.trim(),
+                    senha: senhaInicial,
+                    nome: nome.trim(),
+                    role: 'pai',
+                    telefone: telefone.trim() || null
+                })
+            })
+
+            const resultado = await response.json()
+
+            if (!response.ok) {
+                throw new Error(resultado.error || 'Erro ao criar usuário')
+            }
+
             const { data: paiCriado, error: erroPai } = await supabase
                 .from('pais')
                 .insert({
+                    profile_id: resultado.user.id,
                     nome: nome.trim(),
                     telefone: telefone.trim() || null,
                     whatsapp: whatsapp.trim() || null,
-                    email: email.trim() || null,
+                    email: email.trim(),
+                    parentesco: parentesco,
+                    parentesco_outro: parentesco === 'outro' ? parentescoOutro.trim() : null,
                     status: 'ativo'
                 })
                 .select()
@@ -103,7 +147,6 @@ export default function NovoPaiPage() {
 
             if (erroPai) throw erroPai
 
-            // 2. Vincular aos filhos selecionados
             if (juvenisSelecionados.length > 0) {
                 const vinculos = juvenisSelecionados.map(juvenilId => ({
                     pai_id: paiCriado.id,
@@ -117,13 +160,31 @@ export default function NovoPaiPage() {
                 if (erroVinculo) throw erroVinculo
             }
 
-            alert(`✅ ${nome} cadastrado(a) com sucesso!`)
-            router.push('/pais')
+            setSucesso({
+                email: email.trim(),
+                senha: senhaInicial,
+                nome: nome.trim()
+            })
+
+            setSalvando(false)
         } catch (error: unknown) {
             const mensagem = error instanceof Error ? error.message : 'Erro ao cadastrar'
             setErro(mensagem)
             setSalvando(false)
         }
+    }
+
+    function copiarCredenciais() {
+        if (!sucesso) return
+        const texto = `🙏 Rede Juvenil - Seu Login\n\n📧 Email: ${sucesso.email}\n🔐 Senha: ${sucesso.senha}\n\n🔗 Acesse: https://rede-juvenil.vercel.app/login\n\nAo entrar, recomendamos trocar sua senha!`
+        navigator.clipboard.writeText(texto)
+        alert('✅ Credenciais copiadas! Cole no WhatsApp para enviar')
+    }
+
+    function enviarWhatsApp() {
+        if (!sucesso) return
+        const texto = `🙏 *Rede Juvenil - Seu Login*%0A%0A📧 *Email:* ${sucesso.email}%0A🔐 *Senha:* ${sucesso.senha}%0A%0A🔗 *Acesse:* https://rede-juvenil.vercel.app/login%0A%0AAo entrar, recomendamos trocar sua senha!`
+        window.open(`https://wa.me/?text=${texto}`, '_blank')
     }
 
     if (carregando) {
@@ -135,6 +196,90 @@ export default function NovoPaiPage() {
     }
 
     if (!perfil) return null
+
+    // TELA DE SUCESSO
+    if (sucesso) {
+        return (
+            <div className="min-h-screen bg-gray-100 flex">
+                <Sidebar 
+                    nomeUsuario={perfil.nome}
+                    emailUsuario={perfil.email}
+                    roleUsuario={perfil.role}
+                />
+                <main className="flex-1 p-4 lg:p-8 overflow-x-hidden">
+                    <div className="max-w-2xl mx-auto mt-14 lg:mt-0">
+                        <div className="bg-white rounded-2xl shadow-xl p-6 lg:p-8 border-2 border-green-500">
+                            <div className="text-center mb-6">
+                                <div className="text-6xl mb-4">🎉</div>
+                                <h1 className="text-3xl font-bold text-gray-800 mb-2">
+                                    Cadastrado com sucesso!
+                                </h1>
+                                <p className="text-gray-600">
+                                    <strong>{sucesso.nome}</strong> foi adicionado(a) como responsável
+                                </p>
+                            </div>
+
+                            <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl p-6 mb-6 border-2 border-purple-200">
+                                <h3 className="text-sm font-bold text-gray-700 uppercase mb-4 flex items-center gap-2">
+                                    🔐 Credenciais de Acesso
+                                </h3>
+                                <div className="space-y-3">
+                                    <div>
+                                        <p className="text-xs text-gray-500 uppercase font-semibold">Email</p>
+                                        <p className="text-lg font-mono font-bold text-gray-800 break-all">{sucesso.email}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-xs text-gray-500 uppercase font-semibold">Senha Inicial</p>
+                                        <p className="text-lg font-mono font-bold text-gray-800">{sucesso.senha}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-xs text-gray-500 uppercase font-semibold">Link de Acesso</p>
+                                        <p className="text-sm font-mono text-purple-600 break-all">https://rede-juvenil.vercel.app/login</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
+                                <p className="text-sm text-yellow-800">
+                                    ⚠️ <strong>Importante:</strong> Compartilhe essas credenciais com {sucesso.nome} e oriente-o(a) a trocar a senha após o primeiro acesso.
+                                </p>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
+                                <button onClick={copiarCredenciais} className="bg-purple-500 text-white py-3 rounded-lg font-semibold hover:bg-purple-600 transition flex items-center justify-center gap-2">
+                                    📋 Copiar Credenciais
+                                </button>
+                                <button onClick={enviarWhatsApp} className="bg-green-500 text-white py-3 rounded-lg font-semibold hover:bg-green-600 transition flex items-center justify-center gap-2">
+                                    💬 Enviar por WhatsApp
+                                </button>
+                            </div>
+
+                            <div className="flex gap-3 pt-4 border-t border-gray-200">
+                                <Link href="/pais" className="flex-1 bg-gray-100 text-gray-700 hover:bg-gray-200 py-3 rounded-lg font-semibold text-center transition">
+                                    Ver Lista de Responsáveis
+                                </Link>
+                                <button
+                                    onClick={() => {
+                                        setSucesso(null)
+                                        setNome('')
+                                        setEmail('')
+                                        setTelefone('')
+                                        setWhatsapp('')
+                                        setParentesco('responsavel')
+                                        setParentescoOutro('')
+                                        setJuvenisSelecionados([])
+                                    }}
+                                    className="flex-1 bg-gradient-to-r from-purple-500 to-pink-600 text-white py-3 rounded-lg font-semibold hover:from-purple-600 hover:to-pink-700 transition"
+                                >
+                                    ➕ Cadastrar Outro
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </main>
+            </div>
+        )
+    }
 
     return (
         <div className="min-h-screen bg-gray-100 flex">
@@ -151,15 +296,14 @@ export default function NovoPaiPage() {
                         ← Voltar
                     </Link>
                     <h1 className="text-2xl lg:text-3xl font-bold text-gray-800">
-                        ➕ Novo Pai/Mãe
+                        ➕ Novo Responsável
                     </h1>
                     <p className="text-gray-600 mt-1">
-                        Preencha os dados do responsável
+                        O sistema criará automaticamente o login de acesso
                     </p>
                 </div>
 
                 <form onSubmit={handleSubmit} className="bg-white rounded-2xl shadow p-6 lg:p-8 max-w-2xl">
-                    
                     <div className="space-y-5">
                         
                         <div>
@@ -171,11 +315,68 @@ export default function NovoPaiPage() {
                                 required
                                 value={nome}
                                 onChange={(e) => setNome(e.target.value)}
-                                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none text-gray-800"
+                                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none text-gray-800"
                                 placeholder="Ex: Ana Silva Santos"
                                 disabled={salvando}
                             />
                         </div>
+
+                        <div>
+                            <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                Email para Login <span className="text-red-500">*</span>
+                            </label>
+                            <input
+                                type="email"
+                                required
+                                value={email}
+                                onChange={(e) => setEmail(e.target.value.toLowerCase())}
+                                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none text-gray-800"
+                                placeholder="ana@email.com"
+                                disabled={salvando}
+                            />
+                            <p className="text-xs text-purple-600 mt-1">
+                                🔐 Será criado login automático com senha inicial &quot;rede123&quot;
+                            </p>
+                        </div>
+
+                        {/* Parentesco */}
+                        <div>
+                            <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                Parentesco <span className="text-red-500">*</span>
+                            </label>
+                            <select
+                                required
+                                value={parentesco}
+                                onChange={(e) => setParentesco(e.target.value)}
+                                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none text-gray-800"
+                                disabled={salvando}
+                            >
+                                {OPCOES_PARENTESCO.map(opcao => (
+                                    <option key={opcao.valor} value={opcao.valor}>
+                                        {opcao.label}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+
+                        {/* Campo Outro (aparece se selecionar "outro") */}
+                        {parentesco === 'outro' && (
+                            <div>
+                                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                    Especifique o parentesco <span className="text-red-500">*</span>
+                                </label>
+                                <input
+                                    type="text"
+                                    required
+                                    value={parentescoOutro}
+                                    onChange={(e) => setParentescoOutro(e.target.value)}
+                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none text-gray-800"
+                                    placeholder="Ex: Primo, Madrinha, Amigo da família..."
+                                    disabled={salvando}
+                                    maxLength={100}
+                                />
+                            </div>
+                        )}
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
@@ -186,7 +387,7 @@ export default function NovoPaiPage() {
                                     type="tel"
                                     value={telefone}
                                     onChange={(e) => setTelefone(e.target.value)}
-                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none text-gray-800"
+                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none text-gray-800"
                                     placeholder="(51) 3000-0000"
                                     disabled={salvando}
                                 />
@@ -200,28 +401,13 @@ export default function NovoPaiPage() {
                                     type="tel"
                                     value={whatsapp}
                                     onChange={(e) => setWhatsapp(e.target.value)}
-                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none text-gray-800"
+                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none text-gray-800"
                                     placeholder="(51) 99999-9999"
                                     disabled={salvando}
                                 />
                             </div>
                         </div>
 
-                        <div>
-                            <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                Email
-                            </label>
-                            <input
-                                type="email"
-                                value={email}
-                                onChange={(e) => setEmail(e.target.value)}
-                                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none text-gray-800"
-                                placeholder="email@exemplo.com"
-                                disabled={salvando}
-                            />
-                        </div>
-
-                        {/* Vincular filhos */}
                         <div>
                             <label className="block text-sm font-semibold text-gray-700 mb-2">
                                 Vincular Filho(s) do Ministério
@@ -253,9 +439,6 @@ export default function NovoPaiPage() {
                                     ))}
                                 </div>
                             )}
-                            <p className="text-xs text-gray-500 mt-1">
-                                Marque os filhos que são deste responsável
-                            </p>
                         </div>
 
                         {erro && (
@@ -265,10 +448,7 @@ export default function NovoPaiPage() {
                         )}
 
                         <div className="flex gap-3 pt-4">
-                            <Link
-                                href="/pais"
-                                className="flex-1 bg-gray-100 text-gray-700 hover:bg-gray-200 py-3 rounded-lg font-semibold text-center transition"
-                            >
+                            <Link href="/pais" className="flex-1 bg-gray-100 text-gray-700 hover:bg-gray-200 py-3 rounded-lg font-semibold text-center transition">
                                 Cancelar
                             </Link>
                             <button
@@ -276,7 +456,7 @@ export default function NovoPaiPage() {
                                 disabled={salvando}
                                 className="flex-1 bg-gradient-to-r from-purple-500 to-pink-600 text-white py-3 rounded-lg font-semibold hover:from-purple-600 hover:to-pink-700 transition disabled:opacity-50"
                             >
-                                {salvando ? '⏳ Salvando...' : '💾 Cadastrar'}
+                                {salvando ? '⏳ Cadastrando...' : '💾 Cadastrar + Criar Login'}
                             </button>
                         </div>
                     </div>

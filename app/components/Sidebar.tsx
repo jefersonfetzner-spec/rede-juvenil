@@ -24,7 +24,7 @@ export default function Sidebar({ nomeUsuario, emailUsuario, roleUsuario }: Side
     const menuItems = [
         { href: '/dashboard', icone: '🏠', titulo: 'Dashboard' },
         { href: '/juvenis', icone: '🧒', titulo: 'Juvenis' },
-        { href: '/pais', icone: '👨‍👩‍👧', titulo: 'Pais' },
+                { href: '/pais', icone: '👨‍👩‍👧', titulo: 'Pais/Responsáveis' },
         { href: '/ministros', icone: '⛪', titulo: 'Ministros' },
         { href: '/cultos', icone: '📅', titulo: 'Cultos' },
         { href: '/escalas', icone: '📋', titulo: 'Escalas' },

@@ -19,8 +19,24 @@ interface Pai {
     telefone: string | null
     whatsapp: string | null
     email: string | null
+    parentesco: string
+    parentesco_outro: string | null
     status: string
     created_at: string
+}
+
+const LABELS_PARENTESCO: { [key: string]: string } = {
+    pai: '👨 Pai',
+    mae: '👩 Mãe',
+    avo: '👴 Avô',
+    avoh: '👵 Avó',
+    tio: '🧔 Tio',
+    tia: '👩‍🦰 Tia',
+    padrasto: '👨 Padrasto',
+    madrasta: '👩 Madrasta',
+    tutor: '⚖️ Tutor',
+    responsavel: '🤝 Responsável',
+    outro: '➕ Outro'
 }
 
 export default function PaisPage() {
@@ -73,27 +89,29 @@ export default function PaisPage() {
             if (error) throw error
             setPais(data || [])
         } catch (error) {
-            console.error('Erro ao buscar pais:', error)
+            console.error('Erro:', error)
         }
     }
 
     async function excluirPai(id: string, nome: string) {
-        if (!confirm(`Tem certeza que deseja excluir "${nome}"?`)) return
+        if (!confirm(`Excluir "${nome}"?`)) return
 
         try {
-            const { error } = await supabase
-                .from('pais')
-                .delete()
-                .eq('id', id)
-
+            const { error } = await supabase.from('pais').delete().eq('id', id)
             if (error) throw error
-
-            alert('Pai/Mãe excluído(a) com sucesso!')
+            alert('Responsável excluído com sucesso!')
             await buscarPais()
         } catch (error) {
-            console.error('Erro ao excluir:', error)
+            console.error('Erro:', error)
             alert('Erro ao excluir')
         }
+    }
+
+    function formatarParentesco(pai: Pai) {
+        if (pai.parentesco === 'outro' && pai.parentesco_outro) {
+            return `➕ ${pai.parentesco_outro}`
+        }
+        return LABELS_PARENTESCO[pai.parentesco] || '🤝 Responsável'
     }
 
     const paisFiltrados = pais.filter(p => 
@@ -124,7 +142,7 @@ export default function PaisPage() {
                     <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
                         <div>
                             <h1 className="text-2xl lg:text-3xl font-bold text-gray-800 flex items-center gap-3">
-                                👨‍👩‍👧 Pais / Responsáveis
+                                👨‍👩‍👧 Pais/Responsáveis
                             </h1>
                             <p className="text-gray-600 mt-1">
                                 Total: {pais.length} cadastrado(s)
@@ -137,7 +155,7 @@ export default function PaisPage() {
                                 className="bg-gradient-to-r from-purple-500 to-pink-600 text-white px-6 py-3 rounded-lg font-semibold hover:from-purple-600 hover:to-pink-700 transition shadow-md flex items-center justify-center gap-2"
                             >
                                 <span>➕</span>
-                                Novo Pai/Mãe
+                                Novo Responsável
                             </Link>
                         )}
                     </div>
@@ -149,7 +167,7 @@ export default function PaisPage() {
                         value={busca}
                         onChange={(e) => setBusca(e.target.value)}
                         placeholder="🔍 Buscar por nome..."
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none text-gray-800"
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none text-gray-800"
                     />
                 </div>
 
@@ -157,20 +175,17 @@ export default function PaisPage() {
                     <div className="bg-white rounded-2xl shadow p-12 text-center">
                         <div className="text-6xl mb-4">👨‍👩‍👧</div>
                         <h3 className="text-xl font-bold text-gray-800 mb-2">
-                            {busca ? 'Nenhum pai/mãe encontrado' : 'Nenhum pai/mãe cadastrado'}
+                            {busca ? 'Nenhum responsável encontrado' : 'Nenhum responsável cadastrado'}
                         </h3>
                         <p className="text-gray-600 mb-6">
-                            {busca 
-                                ? 'Tente buscar com outro nome' 
-                                : 'Comece cadastrando o primeiro responsável!'
-                            }
+                            {busca ? 'Tente buscar com outro nome' : 'Comece cadastrando o primeiro responsável!'}
                         </p>
                         {perfil.role === 'lider' && !busca && (
                             <Link
                                 href="/pais/novo"
                                 className="inline-block bg-gradient-to-r from-purple-500 to-pink-600 text-white px-6 py-3 rounded-lg font-semibold hover:from-purple-600 hover:to-pink-700 transition"
                             >
-                                ➕ Cadastrar Primeiro Pai/Mãe
+                                ➕ Cadastrar Primeiro Responsável
                             </Link>
                         )}
                     </div>
@@ -189,6 +204,9 @@ export default function PaisPage() {
                                         <h3 className="font-bold text-gray-800 text-lg leading-tight">
                                             {pai.nome}
                                         </h3>
+                                        <p className="text-sm font-medium text-purple-600 mt-1">
+                                            {formatarParentesco(pai)}
+                                        </p>
                                         <span className={`inline-block mt-1 text-xs px-2 py-0.5 rounded-full ${
                                             pai.status === 'ativo' 
                                                 ? 'bg-green-100 text-green-700'
