@@ -160,7 +160,6 @@ export default function NovoMinistroPage() {
                     <div className="max-w-2xl mx-auto mt-14 lg:mt-0">
                         <div className="bg-white rounded-2xl shadow-xl p-6 lg:p-8 border-2 border-green-500">
                             
-                            {/* Header sucesso */}
                             <div className="text-center mb-6">
                                 <div className="text-6xl mb-4">🎉</div>
                                 <h1 className="text-3xl font-bold text-gray-800 mb-2">
@@ -171,7 +170,6 @@ export default function NovoMinistroPage() {
                                 </p>
                             </div>
 
-                            {/* Credenciais */}
                             <div className="bg-gradient-to-br from-blue-50 to-purple-50 rounded-xl p-6 mb-6 border-2 border-blue-200">
                                 <h3 className="text-sm font-bold text-gray-700 uppercase mb-4 flex items-center gap-2">
                                     🔐 Credenciais de Acesso
@@ -201,7 +199,6 @@ export default function NovoMinistroPage() {
                                 </div>
                             </div>
 
-                            {/* Aviso */}
                             <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
                                 <p className="text-sm text-yellow-800">
                                     ⚠️ <strong>Importante:</strong> Compartilhe essas credenciais 
@@ -209,7 +206,6 @@ export default function NovoMinistroPage() {
                                 </p>
                             </div>
 
-                            {/* Botões de ação */}
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
                                 <button
                                     onClick={copiarCredenciais}
@@ -225,7 +221,6 @@ export default function NovoMinistroPage() {
                                 </button>
                             </div>
 
-                            {/* Navegar */}
                             <div className="flex gap-3 pt-4 border-t border-gray-200">
                                 <Link
                                     href="/ministros"
@@ -253,7 +248,6 @@ export default function NovoMinistroPage() {
         )
     }
 
-    // FORMULÁRIO NORMAL
     return (
         <div className="min-h-screen bg-gray-100 flex">
             <Sidebar 
@@ -280,7 +274,6 @@ export default function NovoMinistroPage() {
                     
                     <div className="space-y-5">
                         
-                        {/* Nome */}
                         <div>
                             <label className="block text-sm font-semibold text-gray-700 mb-2">
                                 Nome Completo <span className="text-red-500">*</span>
@@ -296,7 +289,6 @@ export default function NovoMinistroPage() {
                             />
                         </div>
 
-                        {/* Email para login */}
                         <div>
                             <label className="block text-sm font-semibold text-gray-700 mb-2">
                                 Email para Login <span className="text-red-500">*</span>
@@ -311,7 +303,7 @@ export default function NovoMinistroPage() {
                                 disabled={salvando}
                             />
                             <p className="text-xs text-blue-600 mt-1">
-                                🔐 Será criado login automático com senha inicial "rede123"
+                                🔐 Será criado login automático com senha inicial &quot;rede123&quot;
                             </p>
                         </div>
 
@@ -345,7 +337,6 @@ export default function NovoMinistroPage() {
                             </div>
                         </div>
 
-                        {/* Disponibilidade */}
                         <div>
                             <label className="block text-sm font-semibold text-gray-700 mb-3">
                                 Disponibilidade <span className="text-red-500">*</span>
@@ -385,7 +376,6 @@ export default function NovoMinistroPage() {
                             </div>
                         </div>
 
-                        {/* Função */}
                         <div>
                             <label className="block text-sm font-semibold text-gray-700 mb-2">
                                 Função Principal
