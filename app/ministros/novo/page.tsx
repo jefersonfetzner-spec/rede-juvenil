@@ -19,9 +19,11 @@ export default function NovoMinistroPage() {
     const [carregando, setCarregando] = useState(true)
     const [salvando, setSalvando] = useState(false)
     const [erro, setErro] = useState('')
+    const [sucesso, setSucesso] = useState<{email: string, senha: string, nome: string} | null>(null)
 
     // Campos
     const [nome, setNome] = useState('')
+    const [email, setEmail] = useState('')
     const [telefone, setTelefone] = useState('')
     const [whatsapp, setWhatsapp] = useState('')
     const [disponibilidade, setDisponibilidade] = useState<'domingo' | 'quarta' | 'ambos'>('ambos')
@@ -66,9 +68,32 @@ export default function NovoMinistroPage() {
         setSalvando(true)
 
         try {
-            const { error } = await supabase
+            const senhaInicial = 'rede123'
+
+            // 1. Criar usuário via API
+            const response = await fetch('/api/criar-usuario', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    email: email.trim(),
+                    senha: senhaInicial,
+                    nome: nome.trim(),
+                    role: 'ministro',
+                    telefone: telefone.trim() || null
+                })
+            })
+
+            const resultado = await response.json()
+
+            if (!response.ok) {
+                throw new Error(resultado.error || 'Erro ao criar usuário')
+            }
+
+            // 2. Criar registro na tabela ministros
+            const { error: ministroError } = await supabase
                 .from('ministros')
                 .insert({
+                    profile_id: resultado.user.id,
                     nome: nome.trim(),
                     telefone: telefone.trim() || null,
                     whatsapp: whatsapp.trim() || null,
@@ -77,15 +102,38 @@ export default function NovoMinistroPage() {
                     status: 'ativo'
                 })
 
-            if (error) throw error
+            if (ministroError) throw ministroError
 
-            alert(`✅ ${nome} adicionado(a) à equipe!`)
-            router.push('/ministros')
+            // Sucesso! Mostrar credenciais
+            setSucesso({
+                email: email.trim(),
+                senha: senhaInicial,
+                nome: nome.trim()
+            })
+
+            setSalvando(false)
         } catch (error: unknown) {
             const mensagem = error instanceof Error ? error.message : 'Erro ao cadastrar'
             setErro(mensagem)
             setSalvando(false)
         }
+    }
+
+    function copiarCredenciais() {
+        if (!sucesso) return
+        
+        const texto = `🙏 Rede Juvenil - Seu Login\n\n📧 Email: ${sucesso.email}\n🔐 Senha: ${sucesso.senha}\n\n🔗 Acesse: https://rede-juvenil.vercel.app/login\n\nAo entrar, recomendamos trocar sua senha!`
+        
+        navigator.clipboard.writeText(texto)
+        alert('✅ Credenciais copiadas! Cole no WhatsApp para enviar')
+    }
+
+    function enviarWhatsApp() {
+        if (!sucesso) return
+        
+        const texto = `🙏 *Rede Juvenil - Seu Login*%0A%0A📧 *Email:* ${sucesso.email}%0A🔐 *Senha:* ${sucesso.senha}%0A%0A🔗 *Acesse:* https://rede-juvenil.vercel.app/login%0A%0AAo entrar, recomendamos trocar sua senha!`
+        
+        window.open(`https://wa.me/?text=${texto}`, '_blank')
     }
 
     if (carregando) {
@@ -98,6 +146,114 @@ export default function NovoMinistroPage() {
 
     if (!perfil) return null
 
+    // TELA DE SUCESSO
+    if (sucesso) {
+        return (
+            <div className="min-h-screen bg-gray-100 flex">
+                <Sidebar 
+                    nomeUsuario={perfil.nome}
+                    emailUsuario={perfil.email}
+                    roleUsuario={perfil.role}
+                />
+
+                <main className="flex-1 p-4 lg:p-8 overflow-x-hidden">
+                    <div className="max-w-2xl mx-auto mt-14 lg:mt-0">
+                        <div className="bg-white rounded-2xl shadow-xl p-6 lg:p-8 border-2 border-green-500">
+                            
+                            {/* Header sucesso */}
+                            <div className="text-center mb-6">
+                                <div className="text-6xl mb-4">🎉</div>
+                                <h1 className="text-3xl font-bold text-gray-800 mb-2">
+                                    Cadastrado com sucesso!
+                                </h1>
+                                <p className="text-gray-600">
+                                    <strong>{sucesso.nome}</strong> foi adicionado à equipe
+                                </p>
+                            </div>
+
+                            {/* Credenciais */}
+                            <div className="bg-gradient-to-br from-blue-50 to-purple-50 rounded-xl p-6 mb-6 border-2 border-blue-200">
+                                <h3 className="text-sm font-bold text-gray-700 uppercase mb-4 flex items-center gap-2">
+                                    🔐 Credenciais de Acesso
+                                </h3>
+                                
+                                <div className="space-y-3">
+                                    <div>
+                                        <p className="text-xs text-gray-500 uppercase font-semibold">Email</p>
+                                        <p className="text-lg font-mono font-bold text-gray-800 break-all">
+                                            {sucesso.email}
+                                        </p>
+                                    </div>
+                                    
+                                    <div>
+                                        <p className="text-xs text-gray-500 uppercase font-semibold">Senha Inicial</p>
+                                        <p className="text-lg font-mono font-bold text-gray-800">
+                                            {sucesso.senha}
+                                        </p>
+                                    </div>
+                                    
+                                    <div>
+                                        <p className="text-xs text-gray-500 uppercase font-semibold">Link de Acesso</p>
+                                        <p className="text-sm font-mono text-blue-600 break-all">
+                                            https://rede-juvenil.vercel.app/login
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Aviso */}
+                            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
+                                <p className="text-sm text-yellow-800">
+                                    ⚠️ <strong>Importante:</strong> Compartilhe essas credenciais 
+                                    com {sucesso.nome} e oriente-o(a) a trocar a senha após o primeiro acesso.
+                                </p>
+                            </div>
+
+                            {/* Botões de ação */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
+                                <button
+                                    onClick={copiarCredenciais}
+                                    className="bg-blue-500 text-white py-3 rounded-lg font-semibold hover:bg-blue-600 transition flex items-center justify-center gap-2"
+                                >
+                                    📋 Copiar Credenciais
+                                </button>
+                                <button
+                                    onClick={enviarWhatsApp}
+                                    className="bg-green-500 text-white py-3 rounded-lg font-semibold hover:bg-green-600 transition flex items-center justify-center gap-2"
+                                >
+                                    💬 Enviar por WhatsApp
+                                </button>
+                            </div>
+
+                            {/* Navegar */}
+                            <div className="flex gap-3 pt-4 border-t border-gray-200">
+                                <Link
+                                    href="/ministros"
+                                    className="flex-1 bg-gray-100 text-gray-700 hover:bg-gray-200 py-3 rounded-lg font-semibold text-center transition"
+                                >
+                                    Ver Lista de Ministros
+                                </Link>
+                                <button
+                                    onClick={() => {
+                                        setSucesso(null)
+                                        setNome('')
+                                        setEmail('')
+                                        setTelefone('')
+                                        setWhatsapp('')
+                                    }}
+                                    className="flex-1 bg-gradient-to-r from-pink-500 to-red-500 text-white py-3 rounded-lg font-semibold hover:from-pink-600 hover:to-red-600 transition"
+                                >
+                                    ➕ Cadastrar Outro
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </main>
+            </div>
+        )
+    }
+
+    // FORMULÁRIO NORMAL
     return (
         <div className="min-h-screen bg-gray-100 flex">
             <Sidebar 
@@ -116,7 +272,7 @@ export default function NovoMinistroPage() {
                         ➕ Novo Ministro
                     </h1>
                     <p className="text-gray-600 mt-1">
-                        Adicione um membro à equipe de ministração
+                        O sistema criará automaticamente o login de acesso
                     </p>
                 </div>
 
@@ -124,6 +280,7 @@ export default function NovoMinistroPage() {
                     
                     <div className="space-y-5">
                         
+                        {/* Nome */}
                         <div>
                             <label className="block text-sm font-semibold text-gray-700 mb-2">
                                 Nome Completo <span className="text-red-500">*</span>
@@ -133,10 +290,29 @@ export default function NovoMinistroPage() {
                                 required
                                 value={nome}
                                 onChange={(e) => setNome(e.target.value)}
-                                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent outline-none text-gray-800"
+                                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 outline-none text-gray-800"
                                 placeholder="Ex: Pedro Souza"
                                 disabled={salvando}
                             />
+                        </div>
+
+                        {/* Email para login */}
+                        <div>
+                            <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                Email para Login <span className="text-red-500">*</span>
+                            </label>
+                            <input
+                                type="email"
+                                required
+                                value={email}
+                                onChange={(e) => setEmail(e.target.value.toLowerCase())}
+                                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 outline-none text-gray-800"
+                                placeholder="pedro@email.com"
+                                disabled={salvando}
+                            />
+                            <p className="text-xs text-blue-600 mt-1">
+                                🔐 Será criado login automático com senha inicial "rede123"
+                            </p>
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -148,7 +324,7 @@ export default function NovoMinistroPage() {
                                     type="tel"
                                     value={telefone}
                                     onChange={(e) => setTelefone(e.target.value)}
-                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent outline-none text-gray-800"
+                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 outline-none text-gray-800"
                                     placeholder="(51) 3000-0000"
                                     disabled={salvando}
                                 />
@@ -162,7 +338,7 @@ export default function NovoMinistroPage() {
                                     type="tel"
                                     value={whatsapp}
                                     onChange={(e) => setWhatsapp(e.target.value)}
-                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent outline-none text-gray-800"
+                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 outline-none text-gray-800"
                                     placeholder="(51) 99999-9999"
                                     disabled={salvando}
                                 />
@@ -217,7 +393,7 @@ export default function NovoMinistroPage() {
                             <select
                                 value={funcao}
                                 onChange={(e) => setFuncao(e.target.value)}
-                                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent outline-none text-gray-800"
+                                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 outline-none text-gray-800"
                                 disabled={salvando}
                             >
                                 <option value="ministro">Ministro Principal</option>
@@ -246,7 +422,7 @@ export default function NovoMinistroPage() {
                                 disabled={salvando}
                                 className="flex-1 bg-gradient-to-r from-pink-500 to-red-500 text-white py-3 rounded-lg font-semibold hover:from-pink-600 hover:to-red-600 transition disabled:opacity-50"
                             >
-                                {salvando ? '⏳ Salvando...' : '💾 Cadastrar Ministro'}
+                                {salvando ? '⏳ Cadastrando...' : '💾 Cadastrar + Criar Login'}
                             </button>
                         </div>
                     </div>

@@ -43,24 +43,23 @@ export default function LoginPage() {
                     throw new Error('Usuário desativado. Contate o líder.')
                 }
 
-                // Redirecionar baseado no role
+                                // Redirecionar baseado no role
                 switch (perfil.role) {
                     case 'lider':
                         router.push('/dashboard')
                         break
                     case 'ministro':
-                        router.push('/dashboard')
+                        router.push('/ministro')  // ← MUDAR AQUI
                         break
                     case 'pai':
-                        router.push('/pais')
+                        router.push('/pai')  // ← MUDAR AQUI
                         break
                     case 'juvenil':
-                        router.push('/juvenis')
+                        router.push('/juvenil')  // ← MUDAR AQUI
                         break
                     default:
                         router.push('/dashboard')
                 }
-            }
         } catch (error: unknown) {
             const mensagem = error instanceof Error 
                 ? error.message 
