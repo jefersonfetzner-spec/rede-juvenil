@@ -21,17 +21,68 @@ export default function Sidebar({ nomeUsuario, emailUsuario, roleUsuario }: Side
         router.push('/login')
     }
 
-    const menuItems = [
-        { href: '/dashboard', icone: '🏠', titulo: 'Dashboard' },
-        { href: '/juvenis', icone: '🧒', titulo: 'Juvenis' },
+    // Menu baseado no ROLE do usuário
+    function getMenuItems() {
+        // LÍDER - vê TUDO
+        if (roleUsuario === 'lider') {
+            return [
+                { href: '/dashboard', icone: '🏠', titulo: 'Dashboard' },
+                { href: '/juvenis', icone: '🧒', titulo: 'Juvenis' },
                 { href: '/pais', icone: '👨‍👩‍👧', titulo: 'Pais/Responsáveis' },
-        { href: '/ministros', icone: '⛪', titulo: 'Ministros' },
-        { href: '/cultos', icone: '📅', titulo: 'Cultos' },
-        { href: '/escalas', icone: '📋', titulo: 'Escalas' },
-        { href: '/materiais', icone: '📚', titulo: 'Materiais' },
-        { href: '/avisos', icone: '📣', titulo: 'Avisos' },
-        { href: '/relatorios', icone: '📊', titulo: 'Relatórios' },
-    ]
+                { href: '/ministros', icone: '⛪', titulo: 'Ministros' },
+                { href: '/cultos', icone: '📅', titulo: 'Cultos' },
+                { href: '/escalas', icone: '📋', titulo: 'Escalas' },
+                { href: '/materiais', icone: '📚', titulo: 'Materiais' },
+                { href: '/avisos', icone: '📣', titulo: 'Avisos' },
+            ]
+        }
+
+        // MINISTRO
+        if (roleUsuario === 'ministro') {
+            return [
+                { href: '/ministro', icone: '🏠', titulo: 'Início' },
+                { href: '/cultos', icone: '📅', titulo: 'Cultos' },
+                { href: '/escalas', icone: '📋', titulo: 'Escalas' },
+                { href: '/materiais', icone: '📚', titulo: 'Materiais' },
+                { href: '/avisos', icone: '📣', titulo: 'Avisos' },
+            ]
+        }
+
+        // PAI/RESPONSÁVEL
+        if (roleUsuario === 'pai') {
+            return [
+                { href: '/pai', icone: '🏠', titulo: 'Início' },
+                { href: '/cultos', icone: '📅', titulo: 'Cultos' },
+                { href: '/escalas', icone: '🍰', titulo: 'Lanches' },
+                { href: '/materiais', icone: '📚', titulo: 'Devocionais' },
+                { href: '/avisos', icone: '📣', titulo: 'Avisos' },
+            ]
+        }
+
+        // JUVENIL
+        if (roleUsuario === 'juvenil') {
+            return [
+                { href: '/juvenil', icone: '🏠', titulo: 'Início' },
+                { href: '/materiais', icone: '📚', titulo: 'Materiais' },
+                { href: '/avisos', icone: '📣', titulo: 'Avisos' },
+            ]
+        }
+
+        return []
+    }
+
+    const menuItems = getMenuItems()
+
+    // Label do role em português
+    function labelRole(role: string) {
+        const labels: { [key: string]: string } = {
+            lider: 'Líder',
+            ministro: 'Ministro',
+            pai: 'Responsável',
+            juvenil: 'Juvenil'
+        }
+        return labels[role] || role
+    }
 
     return (
         <>
@@ -71,8 +122,8 @@ export default function Sidebar({ nomeUsuario, emailUsuario, roleUsuario }: Side
                     <div className="bg-white/10 rounded-lg p-3 backdrop-blur">
                         <p className="text-sm font-semibold truncate">{nomeUsuario}</p>
                         <p className="text-xs text-blue-100 truncate">{emailUsuario}</p>
-                        <span className="inline-block mt-1 text-xs bg-white/20 px-2 py-0.5 rounded-full capitalize">
-                            {roleUsuario}
+                        <span className="inline-block mt-1 text-xs bg-white/20 px-2 py-0.5 rounded-full">
+                            {labelRole(roleUsuario)}
                         </span>
                     </div>
                 </div>
